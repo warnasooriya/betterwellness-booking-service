@@ -4,9 +4,15 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const Booking = require("../models/Booking");
 const User = require("../models/User");
-
+const verifyToken = require('../middleware/cognitoAuth');
+router.use(verifyToken)
+const moment = require("moment-timezone");
+const { sendBookingConfirmationEmail } = require("../services/sendNotifications");
+const fs = require("fs");
+const path = require("path");
 // Create a new event
 router.post("/booking", async (req, res) => {
+
 
   const {availabilityId,user} = req.body;
   if (!availabilityId) {
@@ -23,7 +29,7 @@ router.post("/booking", async (req, res) => {
 
 
   const session = await mongoose.startSession();
-
+  let booked;
   try {
     await session.withTransaction(async () => {
     const availability = await Availability.findOne({ _id: availabilityId });
@@ -44,14 +50,36 @@ router.post("/booking", async (req, res) => {
       counselor: availability.user,
       remarks: req.body.remarks,
     });
-    await booking.save({ session: session });
+    
+    
+    booked = await booking.save({ session: session });
+   
+    
 
 
     });
 
     await session.commitTransaction();
     await session.endSession();
+    
+    const availabilityDetails = await Availability.findOne({ _id: availabilityId });
+    const counselorDetails = await User.findOne({ _id: availabilityDetails.user });
+    const customerDetails = await User.findOne({ _id: userInfo._id });
+    const counselorName = counselorDetails.given_name + " " + counselorDetails.family_name;
+    const customerName = customerDetails.given_name + " " + customerDetails.family_name;
+    const bookingNumber = booked.bookingNumber;
 
+    const bookingDetails = {
+      bookingNo: bookingNumber,
+      start: moment(availabilityDetails.start).tz("Asia/Colombo").format("YYYY-MM-DD HH:mm"),
+      customer: customerName,
+      counselor:counselorName,
+    };
+
+    const templatePath = path.join(__dirname, "../templates", "booking-email-template.html");
+    const emailHtml = await getProcessedTemplate(templatePath, bookingDetails);
+
+    await sendBookingConfirmationEmail(userInfo.email, emailHtml);
     res.status(201).json({ message: "Booking created successfully" , status: true});
   }
   catch (err) {
@@ -61,8 +89,45 @@ router.post("/booking", async (req, res) => {
    
 });
 
+function getProcessedTemplate(filePath, data) {
+  return new Promise((resolve, reject) => {
+      fs.readFile(filePath, "utf8", (err, htmlContent) => {
+          if (err) {
+              reject(err);
+          } else {
+              // Replace placeholders with actual data
+              Object.keys(data).forEach((key) => {
+                  const regex = new RegExp(`{{${key}}}`, "g");
+                  htmlContent = htmlContent.replace(regex, data[key]);
+              });
+              resolve(htmlContent);
+          }
+      });
+  });
+}
+
 // Get all events
 router.get("/booking/list", async (req, res) => {
+
+
+  const search = req.headers.searchtext ;
+
+  let searchObj = {};
+  if (search) {
+    searchObj = JSON.parse(search);
+  }
+
+  const searchConditions = [];
+
+  if (searchObj.name && searchObj.name !== "") {
+    searchConditions.push({ fullName: new RegExp(searchObj.name, "i") });
+  }
+  
+  if (searchObj.specialization && searchObj.specialization !== "" && searchObj.specialization.value) {
+    searchConditions.push({ "specialization":   searchObj.specialization.label });
+  }
+
+
   try {
     const query =[
       {
@@ -74,7 +139,7 @@ router.get("/booking/list", async (req, res) => {
           $match:{
               start:{$gte: new Date()},
               }
-          },
+      },
           {
            $lookup: {
              from: "users",
@@ -97,6 +162,9 @@ router.get("/booking/list", async (req, res) => {
          {
            $unwind: "$user.specialization",
          },
+
+
+
          {
           $sort: { 
             start: 1
@@ -108,6 +176,11 @@ router.get("/booking/list", async (req, res) => {
            _id: "$user._id", // Group by counsellorId
            firstName: { $first: "$user.family_name" },
            lastName: { $first: "$user.given_name" },
+           fullName: {
+            $first: {
+              $concat: ["$user.family_name", " ", "$user.given_name"]
+            }
+          },
            specialization: { $first: "$user.specialization.Area" },
            description: { $first: "$user.description" },
            availabilities: {
@@ -126,6 +199,7 @@ router.get("/booking/list", async (req, res) => {
            _id: 0,
            firstName: 1,
            lastName: 1,
+           fullName: 1,
            specialization: 1,
            availabilities: 1,
             description: 1
@@ -134,7 +208,13 @@ router.get("/booking/list", async (req, res) => {
      
      
      ];
-    const availability = await Availability.aggregate(query);
+    
+    if (searchConditions.length > 0) {
+      query.push({ $match: { $and: searchConditions } });
+    }
+    
+     const availability = await Availability.aggregate(query);
+
     res.status(200).json(availability);
   } catch (err) {
     res.status(500).json({ message: err.message });
