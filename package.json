@@ -20,6 +20,7 @@
     "jwks-rsa": "^3.1.0",
     "moment-timezone": "^0.5.47",
     "mongoose": "^8.12.1",
-    "mongoose-sequence": "^6.0.1"
+    "mongoose-sequence": "^6.0.1",
+    "winston": "^3.17.0"
   }
 }

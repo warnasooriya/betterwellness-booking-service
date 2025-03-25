@@ -35,6 +35,7 @@ const verifyToken = (req, res, next) => {
         }
 
         req.user = decoded; // Attach user info to request
+        // console.log('decoded',decoded);
         next();
     });
 };

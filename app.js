@@ -8,6 +8,10 @@ const app = express();
 const port = process.env.PORT || 5002;
 
 // Middleware
+const requestLogger = require('./middleware/requestLogger');
+const errorLogger = require('./middleware/errorLogger');
+
+
 
 app.use(cors(corsOptions))
 app.use(bodyParser.json());
@@ -20,12 +24,22 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => console.log("Connected to MongoDB"))
 .catch((err) => console.log("Error connecting to MongoDB", err));
 
+
+app.use(express.json());
+app.use(requestLogger);
+
 // Routes
 const bookingRouter = require("./routes/bookingRouter");
 
+
+
 app.use("/api", bookingRouter);
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', traceId: req.traceId });
+});
 
+app.use(errorLogger);
 // Start server
 app.listen(port, "0.0.0.0", () => {
   console.log(`Server is running on port ${port}`);
