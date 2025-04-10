@@ -11,6 +11,7 @@ const { sendBookingConfirmationEmail } = require("../services/sendNotifications"
 const fs = require("fs");
 const path = require("path");
 // Create a new event
+
 router.post("/booking", async (req, res) => {
 
 
@@ -28,10 +29,10 @@ router.post("/booking", async (req, res) => {
   }
 
 
-  const session = await mongoose.startSession();
+  // const session = await mongoose.startSession();
   let booked;
   try {
-    await session.withTransaction(async () => {
+    // await session.withTransaction(async () => {
     const availability = await Availability.findOne({ _id: availabilityId });
     if (!availability) {
       return res.status(404).json({ message: "this slot is not found" });
@@ -43,25 +44,16 @@ router.post("/booking", async (req, res) => {
     availability.booked = true;
     availability.bookedBy = userInfo._id;
     
-    await availability.save({ session: session });
+    await availability.save();
     const booking = new Booking({
       availability: availabilityId,
       bookedBy: userInfo._id,
       counselor: availability.user,
       remarks: req.body.remarks,
     });
-    
-    
-    booked = await booking.save({ session: session });
+     
+    booked = await booking.save();
    
-    
-
-
-    });
-
-    await session.commitTransaction();
-    await session.endSession();
-    
     const availabilityDetails = await Availability.findOne({ _id: availabilityId });
     const counselorDetails = await User.findOne({ _id: availabilityDetails.user });
     const customerDetails = await User.findOne({ _id: userInfo._id });
@@ -89,6 +81,81 @@ router.post("/booking", async (req, res) => {
    
 });
 
+// router.post("/booking", async (req, res) => {
+
+
+//   const {availabilityId,user} = req.body;
+//   if (!availabilityId) {
+//     return res.status(400).json({ message: "Problem with availability" });
+//   }
+//   if(!user){
+//     return res.status(400).json({ message: "Problem with user session" });
+//   }
+
+//   const userInfo = await User.findOne({cognito_id: user});
+//   if (!userInfo) {
+//     return res.status(400).json({ message: "Problem with user session" });
+//   }
+
+
+//   const session = await mongoose.startSession();
+//   let booked;
+//   try {
+//     await session.withTransaction(async () => {
+//     const availability = await Availability.findOne({ _id: availabilityId });
+//     if (!availability) {
+//       return res.status(404).json({ message: "this slot is not found" });
+//     }
+
+//     if(availability.booked===true){
+//       return res.status(400).json({ message: "this slot is already booked" });
+//     }
+//     availability.booked = true;
+//     availability.bookedBy = userInfo._id;
+    
+//     await availability.save({ session: session });
+//     const booking = new Booking({
+//       availability: availabilityId,
+//       bookedBy: userInfo._id,
+//       counselor: availability.user,
+//       remarks: req.body.remarks,
+//     });
+    
+    
+//     booked = await booking.save({ session: session });
+   
+//     });
+
+//     await session.commitTransaction();
+//     await session.endSession();
+    
+//     const availabilityDetails = await Availability.findOne({ _id: availabilityId });
+//     const counselorDetails = await User.findOne({ _id: availabilityDetails.user });
+//     const customerDetails = await User.findOne({ _id: userInfo._id });
+//     const counselorName = counselorDetails.given_name + " " + counselorDetails.family_name;
+//     const customerName = customerDetails.given_name + " " + customerDetails.family_name;
+//     const bookingNumber = booked.bookingNumber;
+
+//     const bookingDetails = {
+//       bookingNo: bookingNumber,
+//       start: moment(availabilityDetails.start).tz("Asia/Colombo").format("YYYY-MM-DD HH:mm"),
+//       customer: customerName,
+//       counselor:counselorName,
+//     };
+
+//     const templatePath = path.join(__dirname, "../templates", "booking-email-template.html");
+//     const emailHtml = await getProcessedTemplate(templatePath, bookingDetails);
+
+//     await sendBookingConfirmationEmail(userInfo.email, emailHtml);
+//     res.status(201).json({ message: "Booking created successfully" , status: true});
+//   }
+//   catch (err) {
+//     await session.endSession();
+//     res.status(500).json({ message: err.message });
+//   }
+   
+// });
+
 function getProcessedTemplate(filePath, data) {
   return new Promise((resolve, reject) => {
       fs.readFile(filePath, "utf8", (err, htmlContent) => {
@@ -109,8 +176,9 @@ function getProcessedTemplate(filePath, data) {
 // Get all events
 router.get("/booking/list", async (req, res) => {
 
-
+  
   const search = req.headers.searchtext ;
+  console.log("search",req.headers.searchtext);
 
   let searchObj = {};
   if (search) {
@@ -129,6 +197,7 @@ router.get("/booking/list", async (req, res) => {
 
 
   try {
+
     const query =[
       {
         $match:{
@@ -214,6 +283,8 @@ router.get("/booking/list", async (req, res) => {
     }
     
      const availability = await Availability.aggregate(query);
+
+     console.log("availability",availability);
 
     res.status(200).json(availability);
   } catch (err) {
