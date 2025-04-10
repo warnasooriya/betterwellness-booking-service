@@ -13,7 +13,8 @@ const errorLogger = require('./middleware/errorLogger');
 
 
 
-app.use(cors(corsOptions))
+app.use(cors());
+app.options('*', cors()); // Handle preflight requests
 app.use(bodyParser.json());
 
 // MongoDB connection
@@ -33,9 +34,13 @@ const bookingRouter = require("./routes/bookingRouter");
 
 
 
-app.use("/api", bookingRouter);
+app.use("/booking", bookingRouter);
 
-app.get('/health', (req, res) => {
+app.get('/booking/health', (req, res) => {
+  res.json({ status: 'ok', traceId: req.traceId });
+});
+
+app.get('/', (req, res) => {
   res.json({ status: 'ok', traceId: req.traceId });
 });
 
