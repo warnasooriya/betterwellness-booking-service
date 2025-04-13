@@ -26,6 +26,6 @@ phases:
       - echo Verifying EKS access...
       - echo "Who am I?"
       - aws sts get-caller-identity
-      - kubectl get nodes
       - aws sts assume-role  --role-arn arn:aws:iam::529088268162:role/service-role/codebuild-betterwellness-booking-deploy-service-role  --role-session-name test-session
+      - kubectl get nodes
       - kubectl rollout restart deployment betterwellness-booking -n betterwellness-cluster
