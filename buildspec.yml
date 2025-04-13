@@ -23,4 +23,6 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Build completed on `date`
       - echo Restarting Kubernetes deployment...
+      - echo Verifying EKS access...
+      - kubectl get nodes
       - kubectl rollout restart deployment betterwellness-booking
