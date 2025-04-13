@@ -8,7 +8,7 @@ phases:
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
       - REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
       - IMAGE_TAG=latest
-      - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster --role-arn arn:aws:iam::529088268162:role/service-role/codebuild-betterwellness-booking-deploy-service-role
+      - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster
 
   build:
     commands:
