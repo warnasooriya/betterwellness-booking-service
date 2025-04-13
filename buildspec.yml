@@ -27,4 +27,5 @@ phases:
       - echo "Who am I?"
       - aws sts get-caller-identity
       - kubectl get nodes
+      - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster
       - kubectl rollout restart deployment betterwellness-booking
