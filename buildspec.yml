@@ -24,5 +24,7 @@ phases:
       - echo Build completed on `date`
       - echo Restarting Kubernetes deployment...
       - echo Verifying EKS access...
+      - echo "Who am I?"
+      - aws sts get-caller-identity
       - kubectl get nodes
       - kubectl rollout restart deployment betterwellness-booking
