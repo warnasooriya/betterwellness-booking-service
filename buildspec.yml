@@ -8,6 +8,9 @@ phases:
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
       - echo "🔧 Fetching EKS auth token manually..."
       - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
+      - echo "📄 Downloading EKS CA cert to /tmp..."
+      - mkdir -p /tmp/kube
+      - export CERT_FILE=/tmp/kube/eks-ca.crt
       - echo "📄 Extracting EKS CA cert from kubeconfig..."
       - aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text | base64 -d > eks-ca.crt
       - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
