@@ -1,46 +1,54 @@
 version: 0.2
 
 phases:
+  install:
+    runtime-versions:
+      docker: 20
+    commands:
+      - echo "📦 Installing dependencies..."
+      - apt-get update -y || yum update -y
+      - apt-get install -y jq curl || yum install -y jq curl
+
   pre_build:
     commands:
       - echo "🔐 Logging in to Amazon ECR..."
       - aws --version
-      - echo "🔧 Installing aws-iam-authenticator if missing..."
-      - curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.18.9/2020-11-02/bin/linux/amd64/aws-iam-authenticator
-      - chmod +x ./aws-iam-authenticator
-      - mv ./aws-iam-authenticator /usr/local/bin/
-      - export PATH=$PATH:/usr/local/bin
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
-      - REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
-      - IMAGE_TAG=latest
-      - echo "🔄 Updating kubeconfig..."
-      - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster
-      - echo "📄 Kubeconfig file contents:"
-      - cat ~/.kube/config || echo "⚠️ No kubeconfig found"
+
+      - echo "🔧 Fetching EKS auth token manually..."
+      - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
+
+      - echo "📄 Extracting EKS CA cert from kubeconfig..."
+      - aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 \
+          --query "cluster.certificateAuthority.data" \
+          --output text | base64 -d > eks-ca.crt
+
+      - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
+      - export NAMESPACE=betterwellness-cluster
+      - export REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
+      - export IMAGE_TAG=latest
 
   build:
     commands:
-      - echo "🏗️ Build started on `date`"
-      - echo "📦 Building the Docker image..."
+      - echo "🏗️ Building Docker image..."
       - docker build -t betterwellness/booking-service .
       - docker tag betterwellness/booking-service:latest $REPOSITORY_URI:$IMAGE_TAG
 
   post_build:
     commands:
-      - echo "📤 Pushing the Docker image to ECR..."
+      - echo "📤 Pushing image to Amazon ECR..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "✅ Build completed on `date`"
+
       - echo "🚀 Restarting Kubernetes deployment..."
-      - echo "🔍 Verifying EKS access..."
-      - echo "👤 Who am I?"
-      - aws sts get-caller-identity
-      - echo "🔧 Kubernetes config context:"
-      - kubectl config current-context || echo "⚠️ No current context"
-      - echo "🔍 Checking EKS get-token manually"
-      - aws eks get-token --cluster-name betterwellness-cluster --region ap-southeast-1 || echo "❌ Token fetch failed"
-      - echo "🔍 Checking Kubernetes contexts..."
-      - kubectl config get-contexts || echo "⚠️ No contexts found"
-      - echo "🔍 Trying to get nodes..."
-      - kubectl get nodes || echo "❌ Failed to get nodes"
-      - echo "🔄 Restarting deployment..."
-      - kubectl rollout restart deployment betterwellness-booking -n betterwellness-cluster || echo "❌ Failed to restart deployment"
+      - kubectl get nodes \
+          --token=$K8S_TOKEN \
+          --server=$K8S_SERVER \
+          --certificate-authority=eks-ca.crt || echo "⚠️ Failed to get nodes"
+
+      - echo "🔄 Rolling out deployment update..."
+      - kubectl rollout restart deployment betterwellness-booking \
+          -n $NAMESPACE \
+          --token=$K8S_TOKEN \
+          --server=$K8S_SERVER \
+          --certificate-authority=eks-ca.crt || echo "❌ Failed to restart deployment"
+
