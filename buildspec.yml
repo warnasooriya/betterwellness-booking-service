@@ -43,13 +43,14 @@ phases:
       - echo "🛠 Creating temporary kubeconfig manually..."
       - export KUBECONFIG=$(mktemp)
       - |
+        - |
         cat <<EOF > $KUBECONFIG
         apiVersion: v1
         kind: Config
         clusters:
         - cluster:
             server: $K8S_SERVER
-            certificate-authority: eks-ca.crt
+            certificate-authority: $CERT_FILE
           name: betterwellness-cluster
         contexts:
         - context:
