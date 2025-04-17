@@ -3,28 +3,38 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
+      - echo "🔐 Logging in to Amazon ECR..."
       - aws --version
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
       - REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
       - IMAGE_TAG=latest
+      - echo "🔄 Updating kubeconfig..."
       - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster
+      - echo "📄 Kubeconfig file contents:"
+      - cat ~/.kube/config || echo "⚠️ No kubeconfig found"
+      
+
 
   build:
     commands:
-      - echo Build started on `date`
-      - echo Building the Docker image...
+      - echo "🏗️ Build started on `date`"
+      - echo "📦 Building the Docker image..."
       - docker build -t betterwellness/booking-service .
       - docker tag betterwellness/booking-service:latest $REPOSITORY_URI:$IMAGE_TAG
 
   post_build:
     commands:
-      - echo Pushing the Docker image to ECR...
+      - echo "📤 Pushing the Docker image to ECR..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Build completed on `date`
-      - echo Restarting Kubernetes deployment...
-      - echo Verifying EKS access...
-      - echo "Who am I?"
+      - echo "✅ Build completed on `date`"
+      - echo "🚀 Restarting Kubernetes deployment..."
+      - echo "🔍 Verifying EKS access..."
+      - echo "👤 Who am I?"
       - aws sts get-caller-identity
-      - kubectl get nodes
-      - kubectl rollout restart deployment betterwellness-booking -n betterwellness-cluster
+      - echo "🔧 Kubernetes config context:"
+      - kubectl config current-context || echo "⚠️ No current context"
+      - kubectl config get-contexts || echo "⚠️ No contexts found"
+      - echo "🔍 Trying to get nodes..."
+      - kubectl get nodes || echo "❌ Failed to get nodes"
+      - echo "🔄 Restarting deployment..."
+      - kubectl rollout restart deployment betterwellness-booking -n betterwellness-cluster || echo "❌ Failed to restart deployment"
