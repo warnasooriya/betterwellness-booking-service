@@ -3,16 +3,20 @@ version: 0.2
 phases:
   install:
     commands:
-      - echo "🔧 Installing necessary tools (jq, unzip)..."
+      - echo "🔧 Installing tools..."
       - yum install -y jq unzip
+      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      - unzip awscliv2.zip
+      - ./aws/install --update
+      - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
   pre_build:
     commands:
-      - echo "🔐 Logging in to Amazon ECR..."
+      - echo "🔐 Logging in to ECR..."
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
-      - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
-      - export CERT_DATA=$(aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text)
       - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
-      - export NAMESPACE=betterwellness-cluster
+      - export CERT_DATA=$(aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text)
+      - export NAMESPACE=booking-service  # Use the correct namespace
       - export REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
       - export IMAGE_TAG=latest
   build:
@@ -22,11 +26,10 @@ phases:
       - docker tag betterwellness/booking-service:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      - echo "📤 Pushing Docker image to ECR..."
+      - echo "📤 Pushing image..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "🛠 Creating temporary kubeconfig..."
+      - echo "🛠 Creating kubeconfig..."
       - export KUBECONFIG=$(mktemp)
-      - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
       - |
         cat <<EOF > $KUBECONFIG
         apiVersion: v1
@@ -55,7 +58,6 @@ phases:
                 - "ap-southeast-1"
                 - "--cluster-name"
                 - "betterwellness-cluster"
-              env: null
         EOF
       - echo "🔄 Restarting deployment..."
       - kubectl rollout restart deployment betterwellness-booking -n $NAMESPACE
