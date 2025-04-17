@@ -6,13 +6,15 @@ phases:
       - echo "🔐 Logging in to Amazon ECR..."
       - aws --version
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
+
       - echo "🔧 Fetching EKS auth token manually..."
       - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
+
       - echo "📄 Downloading EKS CA cert to /tmp..."
       - mkdir -p /tmp/kube
       - export CERT_FILE=/tmp/kube/eks-ca.crt
-      - echo "📄 Extracting EKS CA cert from kubeconfig..."
-      - aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text | base64 -d > eks-ca.crt
+      - aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text | base64 -d > $CERT_FILE
+
       - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
       - export NAMESPACE=betterwellness-cluster
       - export REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
@@ -30,20 +32,20 @@ phases:
       - echo "📤 Pushing the Docker image to ECR..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo "✅ Build completed on `date`"
+
       - echo "🚀 Restarting Kubernetes deployment..."
       - echo "🔍 Verifying EKS access..."
-      - echo "👤 Who am I?"
       - aws sts get-caller-identity
+
       - echo "🔧 Kubernetes config context:"
       - kubectl config current-context || echo "⚠️ No current context"
+
       - echo "🔍 Checking Kubernetes contexts..."
       - kubectl config get-contexts || echo "⚠️ No contexts found"
-      - echo "🔄 Restarting deployment..."
-      - echo "🚀 Restarting Kubernetes deployment..."
+
       - echo "🛠 Creating temporary kubeconfig manually..."
       - export KUBECONFIG=$(mktemp)
       - |
-        - |
         cat <<EOF > $KUBECONFIG
         apiVersion: v1
         kind: Config
