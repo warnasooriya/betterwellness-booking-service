@@ -1,6 +1,12 @@
 version: 0.2
 
 phases:
+  install:
+    commands:
+      - echo "Installing necessary tools..."
+      - apt-get update && apt-get install -y curl jq unzip
+      - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
   pre_build:
     commands:
       - echo "🔐 Logging in to Amazon ECR..."
@@ -10,38 +16,29 @@ phases:
       - echo "🔧 Fetching EKS auth token manually..."
       - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
 
-      - echo "📄 Downloading EKS CA cert to /tmp..."
-      - mkdir -p /tmp/kube
-      - export CERT_FILE=/tmp/kube/eks-ca.crt
-      - aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text | base64 -d > $CERT_FILE
+      - echo "📄 Getting EKS CA cert data..."
+      - export CERT_DATA=$(aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text)
 
       - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
       - export NAMESPACE=betterwellness-cluster
       - export REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
       - export IMAGE_TAG=latest
-
   build:
     commands:
       - echo "🏗️ Build started on `date`"
       - echo "📦 Building the Docker image..."
       - docker build -t betterwellness/booking-service .
       - docker tag betterwellness/booking-service:latest $REPOSITORY_URI:$IMAGE_TAG
-
   post_build:
     commands:
       - echo "📤 Pushing the Docker image to ECR..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
+
       - echo "✅ Build completed on `date`"
-
       - echo "🚀 Restarting Kubernetes deployment..."
-      - echo "🔍 Verifying EKS access..."
-      - aws sts get-caller-identity
-
       - echo "🔧 Kubernetes config context:"
-      - kubectl config current-context || echo "⚠️ No current context"
-
-      - echo "🔍 Checking Kubernetes contexts..."
-      - kubectl config get-contexts || echo "⚠️ No contexts found"
+      - echo "👤 Who am I?"
+      - aws sts get-caller-identity
 
       - echo "🛠 Creating temporary kubeconfig manually..."
       - export KUBECONFIG=$(mktemp)
@@ -52,7 +49,7 @@ phases:
         clusters:
         - cluster:
             server: $K8S_SERVER
-            certificate-authority: $CERT_FILE
+            certificate-authority-data: $CERT_DATA
           name: betterwellness-cluster
         contexts:
         - context:
