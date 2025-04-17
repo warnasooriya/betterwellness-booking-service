@@ -9,9 +9,7 @@ phases:
       - echo "🔧 Fetching EKS auth token manually..."
       - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
       - echo "📄 Extracting EKS CA cert from kubeconfig..."
-      - aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 \
-          --query "cluster.certificateAuthority.data" \
-          --output text | base64 -d > eks-ca.crt
+      - aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text | base64 -d > eks-ca.crt
       - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
       - export NAMESPACE=betterwellness-cluster
       - export REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
@@ -38,8 +36,4 @@ phases:
       - echo "🔍 Checking Kubernetes contexts..."
       - kubectl config get-contexts || echo "⚠️ No contexts found"
       - echo "🔄 Restarting deployment..."
-      - kubectl rollout restart deployment betterwellness-booking \
-        -n $NAMESPACE \
-        --token=$K8S_TOKEN \
-        --server=$K8S_SERVER \
-        --certificate-authority=eks-ca.crt || echo "❌ Failed to restart deployment"
+      - kubectl rollout restart deployment betterwellness-booking -n $NAMESPACE --token=$K8S_TOKEN  --server=$K8S_SERVER --certificate-authority=eks-ca.crt
