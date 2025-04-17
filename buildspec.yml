@@ -3,8 +3,8 @@ version: 0.2
 phases:
   install:
     commands:
-      - echo "Installing necessary tools..."
-      - apk add --no-cache curl jq unzip
+      - echo "🔧 Installing necessary tools (curl, jq, unzip)..."
+      - yum install -y curl jq unzip
   pre_build:
     commands:
       - echo "🔐 Logging in to Amazon ECR..."
@@ -17,14 +17,14 @@ phases:
       - export IMAGE_TAG=latest
   build:
     commands:
-      - echo "🏗️ Build started on `date`"
+      - echo "🏗️ Building Docker image..."
       - docker build -t betterwellness/booking-service .
       - docker tag betterwellness/booking-service:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      - echo "📤 Pushing Docker image..."
+      - echo "📤 Pushing Docker image to ECR..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "🛠 Generating kubeconfig..."
+      - echo "🛠 Creating temporary kubeconfig..."
       - export KUBECONFIG=$(mktemp)
       - |
         cat <<EOF > $KUBECONFIG
