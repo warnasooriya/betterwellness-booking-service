@@ -3,8 +3,8 @@ version: 0.2
 phases:
   install:
     commands:
-      - echo "🔧 Installing necessary tools (curl, jq, unzip)..."
-      - yum install -y curl jq unzip
+      - echo "🔧 Installing necessary tools (jq, unzip)..."
+      - yum install -y jq unzip
   pre_build:
     commands:
       - echo "🔐 Logging in to Amazon ECR..."
