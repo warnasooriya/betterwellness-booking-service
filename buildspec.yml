@@ -26,6 +26,7 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo "🛠 Creating temporary kubeconfig..."
       - export KUBECONFIG=$(mktemp)
+      - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
       - |
         cat <<EOF > $KUBECONFIG
         apiVersion: v1
