@@ -2,23 +2,17 @@ version: 0.2
 
 phases:
   install:
+    runtime-versions:
+      docker: 20
     commands:
       - echo "Installing necessary tools..."
-      - apt-get update && apt-get install -y curl jq unzip
-      - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-      - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+      - apk add --no-cache curl jq unzip
   pre_build:
     commands:
       - echo "🔐 Logging in to Amazon ECR..."
-      - aws --version
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
-
-      - echo "🔧 Fetching EKS auth token manually..."
       - export K8S_TOKEN=$(aws eks get-token --region ap-southeast-1 --cluster-name betterwellness-cluster | jq -r '.status.token')
-
-      - echo "📄 Getting EKS CA cert data..."
       - export CERT_DATA=$(aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text)
-
       - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
       - export NAMESPACE=betterwellness-cluster
       - export REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
@@ -26,21 +20,13 @@ phases:
   build:
     commands:
       - echo "🏗️ Build started on `date`"
-      - echo "📦 Building the Docker image..."
       - docker build -t betterwellness/booking-service .
       - docker tag betterwellness/booking-service:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      - echo "📤 Pushing the Docker image to ECR..."
+      - echo "📤 Pushing Docker image..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-
-      - echo "✅ Build completed on `date`"
-      - echo "🚀 Restarting Kubernetes deployment..."
-      - echo "🔧 Kubernetes config context:"
-      - echo "👤 Who am I?"
-      - aws sts get-caller-identity
-
-      - echo "🛠 Creating temporary kubeconfig manually..."
+      - echo "🛠 Generating kubeconfig..."
       - export KUBECONFIG=$(mktemp)
       - |
         cat <<EOF > $KUBECONFIG
@@ -62,6 +48,5 @@ phases:
           user:
             token: $K8S_TOKEN
         EOF
-
-      - echo "🔄 Restarting deployment using custom kubeconfig..."
+      - echo "🔄 Restarting deployment..."
       - kubectl rollout restart deployment betterwellness-booking -n $NAMESPACE
