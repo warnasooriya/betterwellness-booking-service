@@ -36,4 +36,29 @@ phases:
       - echo "🔍 Checking Kubernetes contexts..."
       - kubectl config get-contexts || echo "⚠️ No contexts found"
       - echo "🔄 Restarting deployment..."
-      - kubectl rollout restart deployment betterwellness-booking -n $NAMESPACE --token=$K8S_TOKEN  --server=$K8S_SERVER --certificate-authority=eks-ca.crt
+      - echo "🚀 Restarting Kubernetes deployment..."
+      - echo "🛠 Creating temporary kubeconfig manually..."
+      - export KUBECONFIG=$(mktemp)
+      - |
+        cat <<EOF > $KUBECONFIG
+        apiVersion: v1
+        kind: Config
+        clusters:
+        - cluster:
+            server: $K8S_SERVER
+            certificate-authority: eks-ca.crt
+          name: betterwellness-cluster
+        contexts:
+        - context:
+            cluster: betterwellness-cluster
+            user: betterwellness-user
+          name: betterwellness-context
+        current-context: betterwellness-context
+        users:
+        - name: betterwellness-user
+          user:
+            token: $K8S_TOKEN
+        EOF
+
+      - echo "🔄 Restarting deployment using custom kubeconfig..."
+      - kubectl rollout restart deployment betterwellness-booking -n $NAMESPACE
