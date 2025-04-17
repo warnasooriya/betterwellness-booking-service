@@ -5,6 +5,11 @@ phases:
     commands:
       - echo "🔐 Logging in to Amazon ECR..."
       - aws --version
+      - echo "🔧 Installing aws-iam-authenticator if missing..."
+      - curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.18.9/2020-11-02/bin/linux/amd64/aws-iam-authenticator
+      - chmod +x ./aws-iam-authenticator
+      - mv ./aws-iam-authenticator /usr/local/bin/
+      - export PATH=$PATH:/usr/local/bin
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
       - REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
       - IMAGE_TAG=latest
@@ -12,8 +17,6 @@ phases:
       - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster
       - echo "📄 Kubeconfig file contents:"
       - cat ~/.kube/config || echo "⚠️ No kubeconfig found"
-
-
 
   build:
     commands:
