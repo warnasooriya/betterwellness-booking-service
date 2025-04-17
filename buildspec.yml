@@ -12,7 +12,7 @@ phases:
       - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster
       - echo "📄 Kubeconfig file contents:"
       - cat ~/.kube/config || echo "⚠️ No kubeconfig found"
-      
+
 
 
   build:
@@ -33,6 +33,9 @@ phases:
       - aws sts get-caller-identity
       - echo "🔧 Kubernetes config context:"
       - kubectl config current-context || echo "⚠️ No current context"
+      - echo "🔍 Checking EKS get-token manually"
+      - aws eks get-token --cluster-name betterwellness-cluster --region ap-southeast-1 || echo "❌ Token fetch failed"
+      - echo "🔍 Checking Kubernetes contexts..."
       - kubectl config get-contexts || echo "⚠️ No contexts found"
       - echo "🔍 Trying to get nodes..."
       - kubectl get nodes || echo "❌ Failed to get nodes"
