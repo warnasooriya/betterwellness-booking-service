@@ -1,22 +1,11 @@
 version: 0.2
-
 phases:
-  install:
-    commands:
-      - echo "🔧 Installing tools..."
-      - yum install -y jq unzip
-      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-      - unzip awscliv2.zip
-      - ./aws/install --update
-      - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-      - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+  
   pre_build:
     commands:
       - echo "🔐 Logging in to ECR..."
       - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
-      - export K8S_SERVER="https://71B4D5459E1A0319B69A9329EC6483E4.gr7.ap-southeast-1.eks.amazonaws.com"
-      - export CERT_DATA=$(aws eks describe-cluster --name betterwellness-cluster --region ap-southeast-1 --query "cluster.certificateAuthority.data" --output text)
-      - export NAMESPACE=booking-service  # Use the correct namespace
+      - aws eks update-kubeconfig --region ap-southeast-1 --name betterwellness-cluster
       - export REPOSITORY_URI=529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service
       - export IMAGE_TAG=latest
   build:
@@ -28,37 +17,5 @@ phases:
     commands:
       - echo "📤 Pushing image..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "🛠 Creating kubeconfig..."
-      - export KUBECONFIG=$(mktemp)
-      - |
-        cat <<EOF > $KUBECONFIG
-        apiVersion: v1
-        kind: Config
-        clusters:
-        - cluster:
-            server: $K8S_SERVER
-            certificate-authority-data: $CERT_DATA
-          name: betterwellness-cluster
-        contexts:
-        - context:
-            cluster: betterwellness-cluster
-            user: betterwellness-user
-          name: betterwellness-context
-        current-context: betterwellness-context
-        users:
-        - name: betterwellness-user
-          user:
-            exec:
-              apiVersion: "client.authentication.k8s.io/v1beta1"
-              command: "aws"
-              args:
-                - "eks"
-                - "get-token"
-                - "--region"
-                - "ap-southeast-1"
-                - "--cluster-name"
-                - "betterwellness-cluster"
-        EOF
-      - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com
-      - echo "🔄 Restarting deployment..."
-      - kubectl rollout restart deployment betterwellness-booking -n $NAMESPACE
+      - echo "📤 Pushing image complete"
+      - echo "🚀 Deploying..."
