@@ -13,7 +13,7 @@ const errorLogger = require('./middleware/errorLogger');
 
 
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.options('*', cors()); // Handle preflight requests
 app.use(bodyParser.json());
 
