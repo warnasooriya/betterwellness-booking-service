@@ -18,3 +18,5 @@ phases:
       - echo "📤 Pushing image..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo "📤 Pushing image complete"
+      - echo "🚀 Updating Kubernetes deployment..."
+      - kubectl set image deployment/betterwellness-booking betterwellness-booking=$REPOSITORY_URI:$IMAGE_TAG
