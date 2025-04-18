@@ -13,8 +13,8 @@ const errorLogger = require('./middleware/errorLogger');
 
 
 
-app.use(cors());
-app.options('*', cors()); // Handle preflight requests
+app.use(cors(corsOptions));
+// app.options('*', cors()); // Handle preflight requests
 app.use(bodyParser.json());
 
 // MongoDB connection

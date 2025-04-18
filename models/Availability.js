@@ -1,3 +1,4 @@
+const { stat } = require("fs");
 const mongoose = require("mongoose");
 
 const AvailabilitySchema = new mongoose.Schema(
@@ -15,6 +16,11 @@ const AvailabilitySchema = new mongoose.Schema(
          ref: "User",
          required: true
         },
+        status: { 
+          type: String ,
+          default: "Available"
+
+        },  
   },
 
   { timestamps: true }

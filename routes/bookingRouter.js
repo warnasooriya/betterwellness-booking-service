@@ -2,6 +2,7 @@ const express = require("express");
 const Availability = require("../models/Availability");
 const router = express.Router();
 const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 const Booking = require("../models/Booking");
 const User = require("../models/User");
 const verifyToken = require('../middleware/cognitoAuth');
@@ -80,6 +81,32 @@ router.post("/booking", async (req, res) => {
   }
    
 });
+
+router.put("/update-booking/:id", async (req, res) => {
+
+  const {id,user,status} = req.body;
+  if (!id) {
+    return res.status(400).json({ message: "Problem with availability" });
+  }
+  if(!user){
+    return res.status(400).json({ message: "Problem with user session" });
+  }
+
+  const userInfo = await User.findOne({cognito_id: user});
+  if (!userInfo) {
+    return res.status(400).json({ message: "Problem with user session" });
+  }
+ 
+  await Availability.findOneAndUpdate({ _id: id }, { $set: { status: status } });
+
+  await Booking.findOneAndUpdate({ availability: id }, { $set: { status: status } });
+
+  res.status(201).json({ message: "Session updated successfully" , status: true});
+
+
+
+});
+
 
 // router.post("/booking", async (req, res) => {
 
@@ -173,6 +200,62 @@ function getProcessedTemplate(filePath, data) {
   });
 }
 
+router.get("/getBookings/:id", async (req, res) => {
+  try {
+   
+    const user = await User.findOne({ cognito_id: req.params.id });
+    
+    const bookings = await Booking.aggregate([
+      {
+        $match: {
+          $or: [
+            { bookedBy: user._id },
+            
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "availabilities",
+          localField: "availability",
+          foreignField: "_id",
+          as: "availability",
+        },
+      },
+      {
+        $unwind: "$availability",
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "counselor",
+          foreignField: "_id",
+          as: "counselor",
+        },
+      },
+      {
+        $unwind: "$counselor",
+      },
+      {
+        $lookup: {
+          from: "specializations",
+          localField: "counselor.specialization",
+          foreignField: "_id",
+          as: "specialization",
+        },
+      },
+      {
+        $unwind: "$specialization",
+      },
+      
+    ]);
+
+    res.status(200).json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Get all events
 router.get("/booking/list", async (req, res) => {
 
@@ -201,7 +284,8 @@ router.get("/booking/list", async (req, res) => {
     const query =[
       {
         $match:{
-          booked: {$ne: true}
+          booked: {$ne: true},
+          status: { $nin: ["Cancel", "Complete"] },
         }
       },
       {
