@@ -3,6 +3,7 @@ kind: Job
 metadata:
   name: rollout-restart-booking
 spec:
+  ttlSecondsAfterFinished: 60  # Job and Pod deleted 60s after completion
   template:
     spec:
       serviceAccountName: deployer  # This SA must have permissions
