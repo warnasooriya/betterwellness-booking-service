@@ -1,2 +1,2 @@
 # betterwellness-booking-service
-Handles session scheduling and appointment management. 
+Handles session scheduling and appointment management.
