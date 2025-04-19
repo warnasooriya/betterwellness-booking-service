@@ -18,7 +18,8 @@ app.options('*', cors()); // Handle preflight requests
 app.use(bodyParser.json());
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
+const cleanMongoUri = process.env.MONGODB_URI?.replace(/^"(.*)"$/, "$1");
+mongoose.connect(cleanMongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
