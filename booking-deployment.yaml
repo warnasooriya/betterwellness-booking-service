@@ -16,7 +16,7 @@ spec:
         - name: regcred
       containers:
         - name: betterwellness-booking
-          image: 529088268162.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service:latest
+          image: 565106043125.dkr.ecr.ap-southeast-1.amazonaws.com/betterwellness/booking-service:latest
           ports:
             - containerPort: 5002
           envFrom:
